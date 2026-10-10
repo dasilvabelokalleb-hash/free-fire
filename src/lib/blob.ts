@@ -1,5 +1,6 @@
 import "server-only";
-import { BlobPreconditionFailedError, get, put } from "@vercel/blob";
+import { randomUUID } from "node:crypto";
+import { BlobPreconditionFailedError, put } from "@vercel/blob";
 import type { Product } from "./types";
 
 const productsPath = "products.json";
@@ -9,16 +10,26 @@ export function usesVercelBlobStorage() {
 }
 
 function requireBlobStore() {
-  if (!process.env.BLOB_STORE_ID) {
+  const storeId = process.env.BLOB_STORE_ID;
+  if (!storeId) {
     throw new Error("BLOB_STORE_ID não está configurado para o armazenamento de produção.");
   }
+  return storeId;
 }
 
 export async function readBlobProducts(): Promise<unknown | null> {
-  requireBlobStore();
-  const blob = await get(productsPath, { access: "public", useCache: false });
-  if (!blob) return null;
-  return new Response(blob.stream).json();
+  const publicStoreId = requireBlobStore().replace(/^store_/i, "").toLowerCase();
+  const url = new URL(
+    `https://${publicStoreId}.public.blob.vercel-storage.com/${productsPath}`,
+  );
+  url.searchParams.set("version", randomUUID());
+
+  const response = await fetch(url, { cache: "no-store" });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Falha ao ler o catálogo remoto (HTTP ${response.status}).`);
+  }
+  return response.json();
 }
 
 export async function initializeBlobProducts(products: Product[]) {
