@@ -5,7 +5,7 @@ import {
   initializeBlobProducts,
   readBlobProducts,
   saveBlobProducts,
-  usesVercelBlobStorage,
+  usesVercelCatalogStorage,
 } from "./blob";
 import { initialProducts } from "./seed";
 import type { Product } from "./types";
@@ -27,7 +27,7 @@ async function ensureDataFile() {
 }
 
 export async function getProducts(): Promise<Product[]> {
-  if (usesVercelBlobStorage()) {
+  if (usesVercelCatalogStorage()) {
     const products = await readBlobProducts();
     if (products === null) {
       if (await initializeBlobProducts(initialProducts)) return initialProducts;
@@ -51,7 +51,7 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function saveProducts(products: Product[]): Promise<void> {
-  if (usesVercelBlobStorage()) {
+  if (usesVercelCatalogStorage()) {
     const operation = writeQueue.then(() => saveBlobProducts(products));
     writeQueue = operation.catch(() => undefined);
     await operation;

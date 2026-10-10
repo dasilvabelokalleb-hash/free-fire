@@ -25,7 +25,7 @@ O arquivo `.env.local` contém credenciais apenas para o desenvolvimento local. 
 ## Dados e mídias
 
 - Localmente, a lista de aparelhos é criada com os produtos de demonstração na primeira execução e fica em `data/products.json`; os uploads ficam em `public/uploads/`.
-- Na Vercel, conecte uma loja **Vercel Blob pública** ao projeto e inclua `BLOB_STORE_ID` e `BLOB_READ_WRITE_TOKEN` nos ambientes Production e Preview. O catálogo remoto é persistido em `products.json` e fotos/vídeos são enviados diretamente ao Blob.
+- Na Vercel, conecte uma loja **Vercel Blob pública** para as mídias (`BLOB_STORE_ID` e `BLOB_READ_WRITE_TOKEN`) e uma loja **Vercel Blob privada** para o catálogo (`CATALOG_BLOB_STORE_ID` e `CATALOG_BLOB_READ_WRITE_TOKEN`) nos ambientes Production e Preview. O catálogo fica privado e tem leitura consistente; fotos e vídeos são enviados diretamente ao armazenamento público de mídia.
 - O disco local é usado apenas fora da Vercel. As pastas `data/` e os uploads locais são ignorados pelo Git; faça cópias de segurança se usar esse modo.
 - As fotos dos aparelhos de demonstração são carregadas do Unsplash. Cadastros e uploads próprios ficam armazenados localmente no modo local e no Vercel Blob em produção.
 - As mensagens dos botões de compra são enviadas para o WhatsApp `+55 13 99705-2277`.
