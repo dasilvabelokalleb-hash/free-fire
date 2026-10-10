@@ -1,6 +1,12 @@
 import "server-only";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  initializeBlobProducts,
+  readBlobProducts,
+  saveBlobProducts,
+  usesVercelBlobStorage,
+} from "./blob";
 import { initialProducts } from "./seed";
 import type { Product } from "./types";
 
@@ -21,6 +27,20 @@ async function ensureDataFile() {
 }
 
 export async function getProducts(): Promise<Product[]> {
+  if (usesVercelBlobStorage()) {
+    const products = await readBlobProducts();
+    if (products === null) {
+      if (await initializeBlobProducts(initialProducts)) return initialProducts;
+      const existingProducts = await readBlobProducts();
+      if (Array.isArray(existingProducts)) return existingProducts as Product[];
+      throw new Error("Não foi possível inicializar o catálogo remoto.");
+    }
+    if (!Array.isArray(products)) {
+      throw new Error("O arquivo remoto de produtos contém dados inválidos.");
+    }
+    return products as Product[];
+  }
+
   await ensureDataFile();
   const contents = await readFile(productsFile, "utf8");
   const products: unknown = JSON.parse(contents);
@@ -31,6 +51,13 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function saveProducts(products: Product[]): Promise<void> {
+  if (usesVercelBlobStorage()) {
+    const operation = writeQueue.then(() => saveBlobProducts(products));
+    writeQueue = operation.catch(() => undefined);
+    await operation;
+    return;
+  }
+
   const operation = writeQueue.then(async () => {
     await ensureDataFile();
     const temporaryFile = path.join(dataDirectory, `products.${crypto.randomUUID()}.tmp`);

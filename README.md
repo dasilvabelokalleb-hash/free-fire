@@ -1,6 +1,6 @@
 # Bello TECH
 
-Catálogo de aparelhos seminovos com painel administrativo, integração com WhatsApp e armazenamento local de produtos e mídias.
+Catálogo de aparelhos seminovos com painel administrativo, integração com WhatsApp e suporte a armazenamento local ou Vercel Blob.
 
 ## Requisitos
 
@@ -24,10 +24,10 @@ O arquivo `.env.local` contém credenciais apenas para o desenvolvimento local. 
 
 ## Dados e mídias
 
-- A lista de aparelhos é criada com os produtos de demonstração na primeira execução e fica em `data/products.json`.
-- Arquivos enviados no painel ficam em `public/uploads/`.
-- A pasta `data/` e os arquivos enviados são locais e ignorados pelo Git. Faça cópias de segurança dessas pastas para preservar seus dados.
-- As fotos dos aparelhos de demonstração são carregadas do Unsplash. Cadastros e uploads próprios ficam armazenados localmente.
+- Localmente, a lista de aparelhos é criada com os produtos de demonstração na primeira execução e fica em `data/products.json`; os uploads ficam em `public/uploads/`.
+- Na Vercel, conecte uma loja **Vercel Blob pública** ao projeto e inclua `BLOB_STORE_ID` e `BLOB_READ_WRITE_TOKEN` nos ambientes Production e Preview. O catálogo remoto é persistido em `products.json` e fotos/vídeos são enviados diretamente ao Blob.
+- O disco local é usado apenas fora da Vercel. As pastas `data/` e os uploads locais são ignorados pelo Git; faça cópias de segurança se usar esse modo.
+- As fotos dos aparelhos de demonstração são carregadas do Unsplash. Cadastros e uploads próprios ficam armazenados localmente no modo local e no Vercel Blob em produção.
 - As mensagens dos botões de compra são enviadas para o WhatsApp `+55 13 99705-2277`.
 
 ## Painel administrativo
@@ -41,4 +41,4 @@ npm run build
 npm run start
 ```
 
-O armazenamento de produtos e mídias utiliza arquivos locais. Para manter cadastros após reinicializações, hospede em um servidor Node.js com disco persistente e faça backups de `data/` e `public/uploads/`. **Plataformas serverless com disco efêmero não preservam os cadastros e uploads.** Antes de abrir o site ao público, configure HTTPS, credenciais fortes exclusivas e armazenamento persistente; avalie rate limiting para o painel administrativo.
+Na Vercel, configure `ADMIN_PASSWORD` e `SESSION_SECRET` (pelo menos 32 caracteres) em Production e Preview; o Blob conectado fornece as variáveis de acesso ao armazenamento. O Blob está sujeito aos limites incluídos no plano Hobby. Antes de abrir o painel ao público, configure credenciais fortes exclusivas e avalie rate limiting para as rotas administrativas.

@@ -1,5 +1,6 @@
 "use client";
 
+import { upload as uploadBlob } from "@vercel/blob/client";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -428,6 +429,35 @@ function ProductForm({
     try {
       for (let offset = 0; offset < files.length; offset += 8) {
         const batch = files.slice(offset, offset + 8);
+        const storageResponse = await fetch("/api/upload");
+        if (!storageResponse.ok) throw new Error(await responseError(storageResponse));
+        const storage = (await storageResponse.json()) as { clientUploads: boolean };
+        if (storage.clientUploads) {
+          const extensions: Record<string, string> = {
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+            "video/mp4": ".mp4",
+          };
+          if (batch.some((file) => !extensions[file.type])) {
+            throw new Error("Use fotos JPG, PNG, WEBP ou vídeos MP4.");
+          }
+          const uploaded = await Promise.all(
+            batch.map((file) =>
+              uploadBlob(`uploads/${crypto.randomUUID()}${extensions[file.type]}`, file, {
+                access: "public",
+                handleUploadUrl: "/api/upload",
+              }),
+            ),
+          );
+          const media = uploaded.map((blob, index): ProductMedia => ({
+            type: batch[index].type === "video/mp4" ? "video" : "image",
+            src: blob.url,
+          }));
+          setValues((previous) => ({ ...previous, media: [...previous.media, ...media] }));
+          continue;
+        }
+
         const formData = new FormData();
         batch.forEach((file) => formData.append("files", file));
         const response = await fetch("/api/upload", { method: "POST", body: formData });

@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { handleUpload } from "@vercel/blob/client";
+import type { HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
+import { usesVercelBlobStorage } from "@/lib/blob";
 
 const maxFileSize = 25 * 1024 * 1024;
 const allowedTypes: Record<string, string> = {
@@ -12,7 +15,57 @@ const allowedTypes: Record<string, string> = {
   "video/mp4": ".mp4",
 };
 
+export async function GET() {
+  return NextResponse.json({ clientUploads: usesVercelBlobStorage() });
+}
+
 export async function POST(request: Request) {
+  if (usesVercelBlobStorage()) {
+    if (!request.headers.get("content-type")?.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Envie os arquivos diretamente para o armazenamento de mídia." },
+        { status: 400 },
+      );
+    }
+
+    const body: unknown = await request.json().catch(() => null);
+    if (
+      !body ||
+      typeof body !== "object" ||
+      !("type" in body) ||
+      (body.type !== "blob.generate-client-token" && body.type !== "blob.upload-completed")
+    ) {
+      return NextResponse.json({ error: "Requisição de upload inválida." }, { status: 400 });
+    }
+    if (body.type === "blob.generate-client-token" && !(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
+    }
+
+    const result = await handleUpload({
+      body: body as HandleUploadBody,
+      request,
+      onBeforeGenerateToken: async (pathname) => {
+        if (!(await isAdminAuthenticated())) {
+          throw new Error("Acesso não autorizado.");
+        }
+        const extension = path.extname(pathname).toLowerCase();
+        if (
+          !pathname.startsWith("uploads/") ||
+          !Object.values(allowedTypes).includes(extension)
+        ) {
+          throw new Error("Tipo de arquivo não permitido.");
+        }
+        return {
+          allowedContentTypes: Object.keys(allowedTypes),
+          maximumSizeInBytes: maxFileSize,
+          addRandomSuffix: true,
+          validUntil: Date.now() + 60 * 60 * 1000,
+        };
+      },
+    });
+    return NextResponse.json(result);
+  }
+
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
   }
